@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Login from '../components/Login.vue'
 import StudentRegistration from '../components/StudentRegistration.vue'
 import QRCodeDisplay from '../components/QRCodeDisplay.vue'
+import StudentHistory from '../components/StudentHistory.vue'
 
 const routes = [
   {
@@ -20,6 +21,12 @@ const routes = [
     name: 'QRCodeDisplay',
     component: QRCodeDisplay,
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/history',
+    name: 'StudentHistory',
+    component: StudentHistory,
+    meta: { requiresAuth: true }
   }
 ]
 
@@ -29,12 +36,10 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  if (to.matched.some(record => record.meta.requiresAuth)) {
-    if (!localStorage.getItem('token')) {
-      next('/')
-    } else {
-      next()
-    }
+  const isAuthenticated = localStorage.getItem('token')
+  
+  if (to.meta.requiresAuth && !isAuthenticated) {
+    next('/')
   } else {
     next()
   }

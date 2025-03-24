@@ -3,7 +3,7 @@ CREATE DATABASE IF NOT EXISTS student_db;
 USE student_db;
 
 -- Table des étudiants
-CREATE TABLE IF NOT EXISTS students (
+CREATE TABLE IF NOT EXISTS students1 (
     id INT AUTO_INCREMENT PRIMARY KEY,
     student_id VARCHAR(20) NOT NULL UNIQUE,
     first_name VARCHAR(100) NOT NULL,
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS students (
 );
 
 -- Insertion des étudiants de test
-INSERT INTO students (student_id, first_name, last_name, major, profile_picture, qr_code) VALUES
+INSERT INTO students1 (student_id, first_name, last_name, major, profile_picture, qr_code) VALUES
 ('103495', 'John', 'Doe', 'Computer Science', 'profile1.jpg', 'QR001'),
 ('104567', 'Jane', 'Smith', 'Engineering', 'profile2.jpg', 'QR002'),
 ('103438', 'Michael', 'Johnson', 'Business', 'profile3.jpg', 'QR003'),

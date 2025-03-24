@@ -23,13 +23,12 @@
         <el-form-item label="Profile Picture" prop="profile_picture">
           <el-upload
             class="avatar-uploader"
-            action="http://localhost:3000/api/upload"
+            :auto-upload="false"
             :show-file-list="false"
-            :on-success="handleUploadSuccess"
+            :on-change="handleFileChange"
             :before-upload="beforeUpload"
-            :headers="uploadHeaders"
           >
-            <img v-if="form.profile_picture" :src="form.profile_picture" class="avatar">
+            <img v-if="imagePreview" :src="imagePreview" class="avatar">
             <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
           </el-upload>
         </el-form-item>
@@ -42,7 +41,7 @@
 </template>
 
 <script>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
@@ -56,18 +55,15 @@ export default {
   setup() {
     const router = useRouter()
     const formRef = ref(null)
+    const imagePreview = ref(null)
     const form = reactive({
       student_id: '',
       first_name: '',
       last_name: '',
       major: '',
-      profile_picture: ''
+      profile_picture: null
     })
     const loading = ref(false)
-
-    const uploadHeaders = computed(() => ({
-      Authorization: `Bearer ${localStorage.getItem('token')}`
-    }))
 
     const rules = {
       student_id: [
@@ -87,9 +83,14 @@ export default {
       ]
     }
 
-    const handleUploadSuccess = (response) => {
-      form.profile_picture = response.url
-      ElMessage.success('Profile picture uploaded successfully')
+    const handleFileChange = (file) => {
+      form.profile_picture = file.raw
+      // Créer un aperçu de l'image
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        imagePreview.value = e.target.result
+      }
+      reader.readAsDataURL(file.raw)
     }
 
     const beforeUpload = (file) => {
@@ -115,9 +116,14 @@ export default {
         loading.value = true
         
         const formData = new FormData()
-        Object.keys(form).forEach(key => {
-          formData.append(key, form[key])
-        })
+        formData.append('student_id', form.student_id)
+        formData.append('first_name', form.first_name)
+        formData.append('last_name', form.last_name)
+        formData.append('major', form.major)
+        
+        if (form.profile_picture) {
+          formData.append('profile_picture', form.profile_picture)
+        }
 
         const response = await axios.post('http://localhost:3000/api/students', formData, {
           headers: {
@@ -141,7 +147,7 @@ export default {
         })
       } catch (error) {
         console.error('Registration error:', error)
-        ElMessage.error(error.response?.data?.message || 'Registration failed')
+        ElMessage.error(error.response?.data?.error || 'Registration failed')
       } finally {
         loading.value = false
       }
@@ -152,9 +158,9 @@ export default {
       formRef,
       rules,
       loading,
-      uploadHeaders,
+      imagePreview,
       handleSubmit,
-      handleUploadSuccess,
+      handleFileChange,
       beforeUpload
     }
   }
@@ -189,6 +195,7 @@ h2 {
   width: 178px;
   height: 178px;
   display: block;
+  object-fit: cover;
 }
 
 .avatar-uploader .el-upload {

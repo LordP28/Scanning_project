@@ -12,8 +12,31 @@ const dbConfig = require('./config/db.config');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(cors());
+// Configuration CORS
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://172.29.12.11:3000', 'http://localhost:8080', 'http://127.0.0.1:8080'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  exposedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  maxAge: 86400 // 24 heures
+}));
+
+// Middleware pour logger les requêtes
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  console.log('Headers:', req.headers);
+  console.log('Body:', req.body);
+  next();
+});
+
+// Augmenter le timeout des requêtes
+app.use((req, res, next) => {
+  req.setTimeout(30000); // 30 secondes
+  res.setTimeout(30000);
+  next();
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -46,8 +69,27 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // Connexion aux bases de données
-const adminDb = mysql.createConnection(dbConfig.adminDb);
-const studentDb = mysql.createConnection(dbConfig.studentDb);
+const adminDb = mysql.createPool(dbConfig.adminDb);
+const studentDb = mysql.createPool(dbConfig.studentDb);
+
+// Vérification des connexions
+adminDb.getConnection((err, connection) => {
+    if (err) {
+        console.error('Erreur de connexion à la base de données admin:', err);
+        return;
+    }
+    console.log('Connexion à la base de données admin établie avec succès');
+    connection.release();
+});
+
+studentDb.getConnection((err, connection) => {
+    if (err) {
+        console.error('Erreur de connexion à la base de données student:', err);
+        return;
+    }
+    console.log('Connexion à la base de données student établie avec succès');
+    connection.release();
+});
 
 // Routes d'authentification
 app.post('/api/admin/login', async (req, res) => {
@@ -65,7 +107,7 @@ app.post('/api/admin/login', async (req, res) => {
     adminDb.query('SELECT * FROM administrators WHERE email = ?', [email], async (err, results) => {
         if (err) {
             console.error('Erreur de base de données:', err);
-            return res.status(500).json({ error: 'Erreur de base de données' });
+            return res.status(500).json({ error: 'Erreur de base de données', details: err.message });
         }
         
         console.log('Résultats de la requête:', results);
@@ -92,7 +134,7 @@ app.post('/api/admin/login', async (req, res) => {
             res.json({ token });
         } catch (error) {
             console.error('Erreur lors de la comparaison des mots de passe:', error);
-            res.status(500).json({ error: 'Erreur lors de l\'authentification' });
+            res.status(500).json({ error: 'Erreur lors de l\'authentification', details: error.message });
         }
     });
 });
@@ -101,6 +143,8 @@ app.post('/api/admin/login', async (req, res) => {
 app.post('/api/students', upload.single('profile_picture'), async (req, res) => {
     const { student_id, first_name, last_name, major } = req.body;
     const profile_picture = req.file ? `/uploads/${req.file.filename}` : null;
+    
+    console.log('Données reçues:', { student_id, first_name, last_name, major, profile_picture });
     
     // Génération du QR code
     const qr_code = `QR${Date.now()}`;
@@ -116,7 +160,12 @@ app.post('/api/students', upload.single('profile_picture'), async (req, res) => 
             (err, results) => {
                 if (err) {
                     console.error('Erreur de base de données:', err);
-                    return res.status(500).json({ error: 'Erreur de base de données' });
+                    return res.status(500).json({ 
+                        error: 'Erreur de base de données', 
+                        details: err.message,
+                        code: err.code,
+                        sqlState: err.sqlState
+                    });
                 }
                 res.status(201).json({ 
                     message: 'Étudiant créé avec succès', 
@@ -126,7 +175,10 @@ app.post('/api/students', upload.single('profile_picture'), async (req, res) => 
         );
     } catch (error) {
         console.error('Erreur lors de la génération du QR code:', error);
-        res.status(500).json({ error: 'Erreur lors de la génération du QR code' });
+        res.status(500).json({ 
+            error: 'Erreur lors de la génération du QR code', 
+            details: error.message 
+        });
     }
 });
 
@@ -146,6 +198,38 @@ app.get('/api/students/verify/:qr_code', (req, res) => {
         
         res.json(results[0]);
     });
+});
+
+// Route pour vérifier un étudiant par son ID
+app.get('/api/students/:student_id', (req, res) => {
+    const { student_id } = req.params;
+    
+    studentDb.query('SELECT * FROM students1 WHERE student_id = ?', [student_id], (err, results) => {
+        if (err) {
+            console.error('Erreur de base de données:', err);
+            return res.status(500).json({ error: 'Erreur de base de données' });
+        }
+        
+        if (results.length === 0) {
+            return res.status(404).json({ error: 'Student not found' });
+        }
+        
+        res.json(results[0]);
+    });
+});
+
+// Route pour récupérer tous les étudiants
+app.get('/api/students', (req, res) => {
+  studentDb.query('SELECT * FROM students1 ORDER BY created_at DESC', (err, results) => {
+    if (err) {
+      console.error('Erreur de base de données:', err);
+      return res.status(500).json({ 
+        error: 'Erreur de base de données',
+        details: err.message 
+      });
+    }
+    res.json(results);
+  });
 });
 
 // Démarrage du serveur
