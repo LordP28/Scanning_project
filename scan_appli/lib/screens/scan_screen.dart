@@ -60,32 +60,41 @@ class _ScanScreenState extends State<ScanScreen> {
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
       ),
-      body: Column(
+      body: Stack(
         children: [
-          Expanded(
-            flex: 5,
-            child: Stack(
-              children: [
-                MobileScanner(
-                  controller: controller,
-                  onDetect: _onDetect,
+          MobileScanner(
+            controller: controller,
+            onDetect: _onDetect,
+          ),
+          Center(
+            child: Container(
+              width: 250,
+              height: 250,
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Colors.white,
+                  width: 2,
                 ),
-                CustomPaint(
-                  painter: ScannerOverlay(
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-              ],
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: CustomPaint(
+                painter: ScannerOverlayPainter(),
+              ),
             ),
           ),
-          Expanded(
-            flex: 1,
-            child: Center(
-              child: Text(
-                'Position the QR code within the frame',
+          Positioned(
+            bottom: 50,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              child: const Text(
+                'Place the QR code in the frame',
+                textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 16,
-                  color: Theme.of(context).colorScheme.primary,
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
@@ -96,83 +105,67 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 }
 
-class ScannerOverlay extends CustomPainter {
-  final Color color;
-
-  ScannerOverlay({required this.color});
-
+class ScannerOverlayPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 10;
+      ..color = Colors.white
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
 
-    final width = size.width;
-    final height = size.height;
-    final scanArea = 300.0;
-    final left = (width - scanArea) / 2;
-    final top = (height - scanArea) / 2;
-
-    // Draw border
-    canvas.drawRect(
-      Rect.fromLTWH(left, top, scanArea, scanArea),
+    // Dessiner les coins
+    final cornerSize = 20.0;
+    
+    // Coin supérieur gauche
+    canvas.drawLine(
+      Offset(0, cornerSize),
+      Offset(0, 0),
       paint,
     );
-
-    // Draw corners
-    final cornerLength = 30.0;
-    final cornerWidth = 10.0;
-
-    // Top left corner
     canvas.drawLine(
-      Offset(left, top),
-      Offset(left + cornerLength, top),
-      paint..strokeWidth = cornerWidth,
-    );
-    canvas.drawLine(
-      Offset(left, top),
-      Offset(left, top + cornerLength),
-      paint..strokeWidth = cornerWidth,
+      Offset(0, 0),
+      Offset(cornerSize, 0),
+      paint,
     );
 
     // Top right corner
     canvas.drawLine(
-      Offset(left + scanArea, top),
-      Offset(left + scanArea - cornerLength, top),
-      paint..strokeWidth = cornerWidth,
+      Offset(size.width - cornerSize, 0),
+      Offset(size.width, 0),
+      paint,
     );
     canvas.drawLine(
-      Offset(left + scanArea, top),
-      Offset(left + scanArea, top + cornerLength),
-      paint..strokeWidth = cornerWidth,
+      Offset(size.width, 0),
+      Offset(size.width, cornerSize),
+      paint,
     );
 
     // Bottom left corner
     canvas.drawLine(
-      Offset(left, top + scanArea),
-      Offset(left + cornerLength, top + scanArea),
-      paint..strokeWidth = cornerWidth,
+      Offset(size.width, size.height - cornerSize),
+      Offset(size.width, size.height),
+      paint,
     );
     canvas.drawLine(
-      Offset(left, top + scanArea),
-      Offset(left, top + scanArea - cornerLength),
-      paint..strokeWidth = cornerWidth,
+      Offset(size.width, size.height),
+      Offset(size.width - cornerSize, size.height),
+      paint,
     );
 
     // Bottom right corner
     canvas.drawLine(
-      Offset(left + scanArea, top + scanArea),
-      Offset(left + scanArea - cornerLength, top + scanArea),
-      paint..strokeWidth = cornerWidth,
+      Offset(cornerSize, size.height),
+      Offset(0, size.height),
+      paint,
     );
     canvas.drawLine(
-      Offset(left + scanArea, top + scanArea),
-      Offset(left + scanArea, top + scanArea - cornerLength),
-      paint..strokeWidth = cornerWidth,
+      Offset(0, size.height),
+      Offset(0, size.height - cornerSize),
+      paint,
     );
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+} 
 } 
